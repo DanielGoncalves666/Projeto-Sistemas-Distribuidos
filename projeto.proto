@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+message KeyRequest {
+  // key
+  string key = 1;
+  // version
+  optional int64 ver = 2;
+}
+
+message KeyRange {
+    // from this key
+    KeyRequest fr = 1;
+    // until this key
+    KeyRequest to = 2;
+}
+
+message KeyValueRequest {
+  // key
+  string key = 1;
+  // value
+  string val = 2;
+}
+
+message KeyValueVersionReply {
+  // key
+  string key = 1;
+  // value
+  string val = 2;
+  // version
+  int64 ver = 3;
+}
+
+message PutReply {
+  // key
+  string key = 1;
+  // value
+  string old_val = 2;
+  // old version
+  int64 old_ver = 3;
+  // assigned version
+  int64 ver = 4;
+}
+
+
+
+service KeyValueStore {
+  rpc Get(KeyRequest) returns (KeyValueVersionReply) {}
+  rpc GetRange(KeyRange) returns (stream KeyValueVersionReply) {}
+  rpc GetAll(stream KeyRequest) returns (stream KeyValueVersionReply) {}
+  rpc Put(KeyValueRequest) returns (PutReply) {}
+  rpc PutAll(stream KeyValueRequest) returns (stream PutReply) {}
+  rpc Del(KeyRequest) returns (KeyValueVersionReply) {}
+  rpc DelRange(KeyRange) returns (stream KeyValueVersionReply) {}
+  rpc DelAll(stream KeyRequest) returns (stream KeyValueVersionReply) {}
+  rpc Trim(KeyRequest) returns (KeyValueVersionReply) {}
+}
