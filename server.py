@@ -2,7 +2,6 @@ import grpc
 import projeto_pb2 as pp
 import projeto_pb2_grpc as ppg
 
-import sys
 import time
 import argparse
 from concurrent import futures
@@ -59,7 +58,7 @@ class hashTable:
             (val, ver) = busca_binaria_versao(valores, versao)
             return (chave, val, ver)
 
-    def getRange(self,chave_ini, chave_fim, ver_ini, ver_fim):
+    def getRange(self, chave_ini, ver_ini, chave_fim, ver_fim):
         intervalo_chaves = self.__determinar_intervalo_chaves(chave_ini,chave_fim)
         maior_versao = max(ver_fim,ver_ini)
 
