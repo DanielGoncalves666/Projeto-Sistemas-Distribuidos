@@ -4,6 +4,7 @@ import projeto_pb2_grpc as ppg
 
 import sys
 import time
+import argparse
 from concurrent import futures
 
 def tempo_em_milisec():
@@ -227,23 +228,25 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
         (chave,valor,versao) = self.__banco.trim(request.chave)
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
-def servidor(porta):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    ppg.add_KeyValueStoreServicer_to_server(KeyValueStore(),server)
-    server.add_insecure_port("[::]:" + porta)
-    server.start()
-    print(f"Servidor Iniciado, escutando na porta {porta}")
-    server.wait_for_termination()
+def creating_arg_parser():
+    parser = argparse.ArgumentParser(description='Servidor do sistema de armazenamento Chave-Valor Versionado.')
+    parser.add_argument('--porta', nargs='?', default=50000, type=int, help='Porta onde o servidor irá ouvir')
+
+    return parser
 
 def main():
-    n = len(sys.argv)  # qtd de argumentos
+    command_line = creating_arg_parser().parse_args()
 
-    if n != 2:
-        print("Quantidade incorreta de argumentos.")
-        return
-
-    port = sys.argv[1]
-    servidor(port)
+    porta = str(command_line.porta)
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    ppg.add_KeyValueStoreServicer_to_server(KeyValueStore(), server)
+    try:
+        server.add_insecure_port("[::]:" + porta)
+        server.start()
+        print(f"Servidor Iniciado, escutando na porta {porta}")
+        server.wait_for_termination()
+    except RuntimeError:
+        print(f"Não foi possível atribuir a porta {porta} ao servidor.")
 
 if __name__ == "__main__":
     main()
