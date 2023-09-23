@@ -53,7 +53,7 @@ class hashTable:
         else:
             (_, ver_ant) = valores[0]
             if ver_ant > versao:
-                return (chave,"",versao)
+                return (chave,"",0)
 
             (val, ver) = busca_binaria_versao(valores, versao)
             return (chave, val, ver)
@@ -74,8 +74,11 @@ class hashTable:
         todas_chaves = list(self.__tabela)
         todas_chaves.sort()
 
-        # E SE AS CHAVES ESTIVEREM INVERTIDAS?
-        # !!!!!!!!!!!!!
+        aux = max(chave_ini,chave_fim)
+        chave_ini = min(chave_ini, chave_fim)
+        chave_fim = aux
+
+        ini = fim = 0
         for i in range(len(todas_chaves)):
             if todas_chaves[i] >= chave_ini:
                 ini = i
@@ -106,6 +109,7 @@ class hashTable:
             self.__tabela[chave] = [(valor,versao)]
 
             # chave, valor_antigo, ver_antiga, versao_nova
+
             return (chave,"",0,versao)
         else:
             # atualizar entrada
@@ -118,9 +122,7 @@ class hashTable:
 
     def putAll(self, conjunto):
         resposta = []
-        for i in conjunto:
-            chave = i.key
-            valor = i.val
+        for (chave, valor) in conjunto:
             retorno = self.put(chave,valor)
             resposta.append(retorno)
 
@@ -149,8 +151,7 @@ class hashTable:
 
     def dellAll(self, conjunto):
         resposta = []
-        for i in conjunto:
-            chave = i.key
+        for chave in conjunto:
             retorno = self.dell(chave)
             resposta.append(retorno)
 
@@ -178,7 +179,7 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
     __banco = hashTable()
 
     def Get(self, request, context):
-        (chave, valor, versao) = self.__banco.get(request.chave, request.versao)
+        (chave, valor, versao) = self.__banco.get(request.key, request.ver)
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
     def GetRange(self, request, context):
@@ -190,27 +191,40 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
             yield pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
     def GetAll(self, request_iterator, context):
-        retorno = self.__banco.getAll(request_iterator)
+        vet = []
+        for i in request_iterator:
+            vet.append((i.key,i.ver))
+
+        retorno = self.__banco.getAll(vet)
         for i in retorno:
             (chave, valor, ver) = i
             yield pp.KeyValueVersionReply(key=chave,val=valor,ver=ver)
 
     def Put(self, request, context):
-        (chave,valor_ant,ver_ant,ver_atual) = self.__banco.put(request.chave, request.valor)
+        (chave,valor_ant,ver_ant,ver_atual) = self.__banco.put(request.key, request.val)
         return pp.PutReply(key=chave,old_val=valor_ant,old_ver=ver_ant,ver=ver_atual)
 
     def PutAll(self, request_iterator, context):
-        retorno = self.__banco.putAll(request_iterator)
+        vet = []
+
+        for i in request_iterator:
+            vet.append((i.key, i.val))
+
+        retorno = self.__banco.putAll(vet)
         for i in retorno:
             (chave,valor_ant,ver_ant,ver) = i
             yield pp.PutReply(key=chave,old_val=valor_ant,old_ver=ver_ant,ver=ver)
 
     def Del(self, request, context):
-        (chave,valor,versao) = self.__banco.dell(request.chave)
+        (chave,valor,versao) = self.__banco.dell(request.key)
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
     def DelAll(self, request_iterator, context):
-        retorno = self.__banco.dellAll(request_iterator)
+        vet = []
+        for i in request_iterator:
+            vet.append(i.key)
+
+        retorno = self.__banco.dellAll(vet)
         for i in retorno:
             (chave,valor,versao) = i
             yield pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
@@ -224,7 +238,7 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
             yield pp.KeyValueVersionReply(key=chave, val=valor, ver=versao)
 
     def Trim(self, request, context):
-        (chave,valor,versao) = self.__banco.trim(request.chave)
+        (chave,valor,versao) = self.__banco.trim(request.key)
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
 def creating_arg_parser():
