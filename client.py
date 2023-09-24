@@ -46,20 +46,12 @@ def creating_arg_parser():
 
     return parser
 
-def main():
-    # parse_args cria os objetos referentes ao que foi passado na linha de comando
-    command_line = creating_arg_parser().parse_args()
-
-    porta = str(command_line.porta)
+def Client(porta, op, chaves, valores, versoes):
     with grpc.insecure_channel("[::]:" + porta) as channel:
         stub = ppg.KeyValueStoreStub(channel)
 
-        op = command_line.op
-        chaves = command_line.chave
         qtd_chaves = len(chaves)
-        valores = [] if command_line.valor == None else command_line.valor
         qtd_valores = len(valores)
-        versoes = [] if command_line.versao == None else command_line.versao
         qtd_versoes = len(versoes)
 
         resposta = []
@@ -82,7 +74,7 @@ def main():
 
             key = chaves[0]
             ver = 0 if versoes == [] else versoes[0]
-            resposta = stub.Get(create_KeyRequest(key,ver))
+            resposta = stub.Get(create_KeyRequest(key, ver))
 
         elif op == "getrange":
             if qtd_chaves != 2:
@@ -112,7 +104,7 @@ def main():
                 ver_fim = versoes[1]
 
             resposta = []
-            for r in stub.GetRange(create_KeyRange(key_ini,ver_ini,key_fim,ver_fim)):
+            for r in stub.GetRange(create_KeyRange(key_ini, ver_ini, key_fim, ver_fim)):
                 resposta.append(r)
 
         elif op == "getall":
@@ -150,7 +142,7 @@ def main():
             key = chaves[0]
             val = valores[0]
 
-            resposta = stub.Put(create_KeyValueRequest(key,val))
+            resposta = stub.Put(create_KeyValueRequest(key, val))
 
         elif op == "putall":
             if qtd_valores != qtd_chaves:
@@ -185,7 +177,7 @@ def main():
                 exit()
 
             key = chaves[0]
-            resposta = stub.Del(create_KeyRequest(key,0))
+            resposta = stub.Del(create_KeyRequest(key, 0))
 
         elif op == "delrange":
             if qtd_chaves != 2:
@@ -207,7 +199,7 @@ def main():
             key_fim = chaves[1]
 
             resposta = []
-            for r in stub.DelRange(create_KeyRange(key_ini,0,key_fim,0)):
+            for r in stub.DelRange(create_KeyRange(key_ini, 0, key_fim, 0)):
                 resposta.append(r)
 
         elif op == "delall":
@@ -245,9 +237,22 @@ def main():
                 exit()
 
             key = chaves[0]
-            resposta = stub.Trim(create_KeyRequest(key,0))
+            resposta = stub.Trim(create_KeyRequest(key, 0))
 
-        print(f"Resposta = \n{resposta}")
+        return resposta
+
+def main():
+    # parse_args cria os objetos referentes ao que foi passado na linha de comando
+    command_line = creating_arg_parser().parse_args()
+
+    porta = str(command_line.porta)
+    op = command_line.op
+    chaves = command_line.chave
+    valores = [] if command_line.valor == None else command_line.valor
+    versoes = [] if command_line.versao == None else command_line.versao
+
+    retorno = Client(porta,op,chaves,valores,versoes)
+    print(f"{retorno}")
 
 if __name__ == "__main__":
     main()
