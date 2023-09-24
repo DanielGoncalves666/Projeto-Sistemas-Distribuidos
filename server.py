@@ -202,9 +202,6 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
         self.__banco = banco
         self.__mqtt_client = client
 
-    def retornar_banco(self):
-        return self.__banco
-
     def Get(self, request, context):
         (chave, valor, versao) = self.__banco.get(request.key, request.ver)
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
@@ -230,8 +227,7 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
     def Put(self, request, context):
         (chave,valor_ant,ver_ant,ver_atual) = self.__banco.put(request.key, request.val)
 
-        (_,valor_atual,_) = self.__banco.get(chave,0)
-        self.__mqtt_client.publish("put",f"{id},{chave},{valor_atual},{ver_atual}")
+        self.__mqtt_client.publish("put",f"{id},{chave},{request.val},{ver_atual}")
         return pp.PutReply(key=chave,old_val=valor_ant,old_ver=ver_ant,ver=ver_atual)
 
     def PutAll(self, request_iterator, context):
@@ -241,6 +237,16 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
             vet.append((i.key, i.val))
 
         retorno = self.__banco.putAll(vet)
+
+        versoes = []
+        for (_,_,_,ver_atual) in retorno:
+            versoes.append(ver_atual)
+
+        publicar = f"{id}"
+        for i in range(len(vet)):
+            publicar += f",,({vet[i][0]},{vet[i][1]},{versoes[i]})"
+        self.__mqtt_client.publish("putall",publicar)
+
         for i in retorno:
             (chave,valor_ant,ver_ant,ver) = i
             yield pp.PutReply(key=chave,old_val=valor_ant,old_ver=ver_ant,ver=ver)
@@ -257,6 +263,12 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
             vet.append(i.key)
 
         retorno = self.__banco.dellAll(vet)
+
+        publicar = f"{id}"
+        for (chave,_,_) in retorno:
+            publicar += f",{chave}"
+        self.__mqtt_client.publish("delall",publicar)
+
         for i in retorno:
             (chave,valor,versao) = i
             yield pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
@@ -265,6 +277,8 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
         fr = request.fr
         to = request.to
         resposta = self.__banco.dellRange(fr.key,to.key)
+
+        self.__mqtt_client.publish("delrange",f"{id},{fr.key},{to.key}")
 
         for (chave, valor, versao) in resposta:
             yield pp.KeyValueVersionReply(key=chave, val=valor, ver=versao)
@@ -282,6 +296,20 @@ def on_message_put(client, userdata, message):
         banco.adicionar_entrada(chave,valor,versao)
         print(f"Atualização da base de dados recebida.\n\tPUT: {chave} {valor} {versao}")
 
+def on_message_putall(client, userdata, message):
+    # tópico putall
+    recebido = message.payload.decode().split(",,")
+    identificador = recebido[0]
+    if id != int(identificador):
+        for i in recebido[1:]:
+            (chave,valor,ver) = i.split(',')
+            chave =  chave[1:]
+            ver = int(ver[0:-1])
+
+            banco.adicionar_entrada(chave,valor,ver)
+
+        print(f"Atualização da base de dados recebida.\n\tPUTALL: ...")
+
 def on_message_del(client, userdata, message):
     # trata os dados recebidos no tópico del
 
@@ -290,10 +318,29 @@ def on_message_del(client, userdata, message):
         banco.dell(chave)
         print(f"Atualização da base de dados recebida.\n\tDEL: {chave}")
 
+def on_message_delrange(cliente, userdata, message):
+    # trata os dados recebidos no tópico delrange
+
+    identificador, chave_ini, chave_fim = message.payload.decode().split(",")
+    if id != int(identificador):
+        banco.dellRange(chave_ini, chave_fim)
+        print(f"Atualização da base de dados recebida.\n\tDELRANGE: {min(chave_ini,chave_fim)} ... {max(chave_ini,chave_fim)}")
+
+def on_message_delall(cliente, userdata, message):
+    # tópico delall
+
+    recebido = message.payload.decode().split(",")
+    identificador = recebido[0]
+    if id != int(identificador):
+        banco.dellAll(recebido[1:])
+
+        print(f"Atualização da base de dados recebida.\n\tDELALL: ...")
+
+
 def on_message_trim(client, userdata, message):
     # trata os dados recebidos no tópico trim
 
-    identificador, chave = message.payload.decode().split('')
+    identificador, chave = message.payload.decode().split(',')
     if id != int(identificador):
         banco.trim(chave)
         print(f"Atualização da base de dados recebida.\n\tTRIM: {chave}")
@@ -310,11 +357,17 @@ def conectar_cliente():
     print(f"Servidor conectado com o broker na porta {broker}")
 
     mqtt_client.subscribe("put")
+    mqtt_client.subscribe("putall")
     mqtt_client.subscribe("del")
+    mqtt_client.subscribe("delrange")
+    mqtt_client.subscribe("delall")
     mqtt_client.subscribe("trim")
 
     mqtt_client.message_callback_add("put",on_message_put)
+    mqtt_client.message_callback_add("putall",on_message_putall)
     mqtt_client.message_callback_add("del",on_message_del)
+    mqtt_client.message_callback_add("delrange",on_message_delrange)
+    mqtt_client.message_callback_add("delall",on_message_delall)
     mqtt_client.message_callback_add("trim",on_message_trim)
 
     return mqtt_client
