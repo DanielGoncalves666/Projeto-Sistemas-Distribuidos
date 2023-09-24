@@ -1,10 +1,15 @@
+
 import grpc
 import projeto_pb2 as pp
 import projeto_pb2_grpc as ppg
 
+import paho.mqtt.client as mqtt
+
 import time
 import argparse
+import random
 from concurrent import futures
+
 
 def tempo_em_milisec():
     return int(time.time() * 1000)
@@ -35,6 +40,12 @@ def busca_binaria_versao(vetor, ver):
             return vetor[media - 1]
 
         media = (min + max) // 2
+
+def creating_arg_parser():
+    parser = argparse.ArgumentParser(description='Servidor do sistema de armazenamento Chave-Valor Versionado.')
+    parser.add_argument('--porta', nargs='?', default=40000, type=int, help='Porta onde o servidor irá ouvir')
+
+    return parser
 
 class hashTable:
     __tabela: {"": [("", int)]} = {}
@@ -128,6 +139,14 @@ class hashTable:
 
         return resposta
 
+    def adicionar_entrada(self, chave, valor, versao):
+        if chave not in self.__tabela:
+            self.__tabela[chave] = [(valor,int(versao))]
+        else:
+            vetor = self.__tabela[chave]
+            vetor.append((valor, int(versao)))
+            self.__tabela[chave] = vetor
+
     def dell(self, chave):
         if chave not in self.__tabela:
             return (chave,"",0)
@@ -176,7 +195,15 @@ class hashTable:
             print()
 
 class KeyValueStore(ppg.KeyValueStoreServicer):
-    __banco = hashTable()
+    __banco = None
+    __mqtt_client = None
+
+    def __init__(self, banco, client):
+        self.__banco = banco
+        self.__mqtt_client = client
+
+    def retornar_banco(self):
+        return self.__banco
 
     def Get(self, request, context):
         (chave, valor, versao) = self.__banco.get(request.key, request.ver)
@@ -202,6 +229,9 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
 
     def Put(self, request, context):
         (chave,valor_ant,ver_ant,ver_atual) = self.__banco.put(request.key, request.val)
+
+        (_,valor_atual,_) = self.__banco.get(chave,0)
+        self.__mqtt_client.publish("put",f"{id},{chave},{valor_atual},{ver_atual}")
         return pp.PutReply(key=chave,old_val=valor_ant,old_ver=ver_ant,ver=ver_atual)
 
     def PutAll(self, request_iterator, context):
@@ -217,6 +247,8 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
 
     def Del(self, request, context):
         (chave,valor,versao) = self.__banco.dell(request.key)
+
+        self.__mqtt_client.publish("del",f"{id},{chave}")
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
     def DelAll(self, request_iterator, context):
@@ -239,25 +271,73 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
 
     def Trim(self, request, context):
         (chave,valor,versao) = self.__banco.trim(request.key)
+
+        self.__mqtt_client.publish("trim", f"{id},{chave}")
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
-def creating_arg_parser():
-    parser = argparse.ArgumentParser(description='Servidor do sistema de armazenamento Chave-Valor Versionado.')
-    parser.add_argument('--porta', nargs='?', default=50000, type=int, help='Porta onde o servidor irá ouvir')
+def on_message_put(client, userdata, message):
+    # trata os dados recebidos no tópico put
+    identificador, chave, valor, versao = message.payload.decode().split(",")
+    if id != int(identificador):
+        banco.adicionar_entrada(chave,valor,versao)
+        print(f"Atualização da base de dados recebida.\n\tPUT: {chave} {valor} {versao}")
 
-    return parser
+def on_message_del(client, userdata, message):
+    # trata os dados recebidos no tópico del
+
+    identificador, chave = message.payload.decode().split(",")
+    if id != int(identificador):
+        banco.dell(chave)
+        print(f"Atualização da base de dados recebida.\n\tDEL: {chave}")
+
+def on_message_trim(client, userdata, message):
+    # trata os dados recebidos no tópico trim
+
+    identificador, chave = message.payload.decode().split('')
+    if id != int(identificador):
+        banco.trim(chave)
+        print(f"Atualização da base de dados recebida.\n\tTRIM: {chave}")
+
+def conectar_cliente():
+    broker = 1883
+
+    global id
+    id = int(time.time() * 1000000)
+
+    mqtt_client = mqtt.Client(f"{id}")  # criando cliente mqtt
+
+    mqtt_client.connect("localhost", broker, 60)  # conectando com o broker
+    print(f"Servidor conectado com o broker na porta {broker}")
+
+    mqtt_client.subscribe("put")
+    mqtt_client.subscribe("del")
+    mqtt_client.subscribe("trim")
+
+    mqtt_client.message_callback_add("put",on_message_put)
+    mqtt_client.message_callback_add("del",on_message_del)
+    mqtt_client.message_callback_add("trim",on_message_trim)
+
+    return mqtt_client
 
 def main():
     command_line = creating_arg_parser().parse_args()
-
     porta = str(command_line.porta)
+
+    global banco
+    banco = hashTable() # cria a base de dados do servidor
+    mqtt_client = conectar_cliente() # cria o cliente mqtt
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    ppg.add_KeyValueStoreServicer_to_server(KeyValueStore(), server)
+    ppg.add_KeyValueStoreServicer_to_server(KeyValueStore(banco,mqtt_client), server)
     try:
+        mqtt_client.loop_start()
+
         server.add_insecure_port("[::]:" + porta)
         server.start()
         print(f"Servidor Iniciado, escutando na porta {porta}")
+
         server.wait_for_termination()
+        mqtt_client.loop_stop()
     except RuntimeError:
         print(f"Não foi possível atribuir a porta {porta} ao servidor.")
 

@@ -38,7 +38,7 @@ def creating_arg_parser():
     # a instância de ArgumentParser irá conter todas as informações da interface de linha de comando
     parser = argparse.ArgumentParser(description='Cliente de acesso ao sistema de armazenamento Chave-Valor Versionado.')
     # add_argument adiciona argumentos que podem ser inseridos na linha de comando
-    parser.add_argument('--porta', nargs='?', default=50000, type=int, help='Porta do servidor para conexão.')
+    parser.add_argument('--porta', nargs='?', default=40000, type=int, help='Porta do servidor para conexão.')
     parser.add_argument('op', choices=comandos_possiveis, help="Operação a ser realizada.")
     parser.add_argument('--chave', nargs='+', required=True, help="Chave(s) na(s) qual(is) a operação será aplicada.")
     parser.add_argument('--valor', nargs='+', help="Novo(s) Valor(es) para a(s) chave(s) especificada(s).")
