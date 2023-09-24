@@ -63,114 +63,191 @@ def main():
         qtd_versoes = len(versoes)
 
         resposta = []
+        erro = 0
         if op == "get":
-            if qtd_chaves != 1 or qtd_valores != 0 or qtd_versoes > 1:
-                print(f"{op}:\t Esperava-se {1} chave(s), {qtd_chaves} foram passadas. \n"
-                      f"\t Esperava-se {0} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0} ou {1} versao(oes), {qtd_versoes} foram passadas.")
-            else:
-                key = chaves[0]
-                ver = 0 if versoes == [] else versoes[0]
-                resposta = stub.Get(create_KeyRequest(key,ver))
+            if qtd_chaves != 1:
+                print(f"{op}: Esperava-se {1} chave(s), {qtd_chaves} chave(s) foram passadas.")
+                erro += 1
+
+            if qtd_valores != 0:
+                print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
+
+            if qtd_versoes > 1:
+                print(f"{op}: Esperava-se no máximo 1 versão, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            key = chaves[0]
+            ver = 0 if versoes == [] else versoes[0]
+            resposta = stub.Get(create_KeyRequest(key,ver))
 
         elif op == "getrange":
-            if qtd_chaves != 2 or qtd_valores != 0 or qtd_versoes > 2:
-                print(f"{op}:\t Esperava-se {2} chave(s), {qtd_chaves} foram passadas. \n"
-                      f"\t Esperava-se {0} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0},{1} ou {2} versao(oes), {qtd_versoes} foram passadas.")
-            else:
-                key_ini = chaves[0]
-                key_fim = chaves[1]
-                if len(versoes) == 0:
-                    ver_ini = ver_fim = 0
-                elif len(versoes) == 1:
-                    ver_ini = versoes[0]
-                    ver_fim = 0
-                else:
-                    ver_ini = versoes[0]
-                    ver_fim = versoes[1]
+            if qtd_chaves != 2:
+                print(f"{op}: Esperava-se {2} chave(s), {qtd_chaves} chave(s) foram passadas.")
+                erro += 1
 
-                resposta = []
-                for r in stub.GetRange(create_KeyRange(key_ini,ver_ini,key_fim,ver_fim)):
-                    resposta.append(r)
+            if qtd_valores != 0:
+                print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
+
+            if qtd_versoes > 2:
+                print(f"{op}: Esperava-se no máximo 2 versões, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            key_ini = chaves[0]
+            key_fim = chaves[1]
+            if len(versoes) == 0:
+                ver_ini = ver_fim = 0
+            elif len(versoes) == 1:
+                ver_ini = versoes[0]
+                ver_fim = 0
+            else:
+                ver_ini = versoes[0]
+                ver_fim = versoes[1]
+
+            resposta = []
+            for r in stub.GetRange(create_KeyRange(key_ini,ver_ini,key_fim,ver_fim)):
+                resposta.append(r)
 
         elif op == "getall":
-            if qtd_versoes > qtd_chaves or qtd_valores != 0:
-                print(f"{op}:\t Quantidade ilimitada de chaves permitida. \n"
-                      f"\t Esperava-se {0} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se no máximo {qtd_chaves} versoes, {qtd_versoes} foram passadas.")
-            else:
-                gen = create_getAll_generator(chaves, qtd_chaves, versoes, qtd_versoes)
-                for r in stub.GetAll(gen):
-                    resposta.append(r)
+            if qtd_valores != 0:
+                print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
+
+            if qtd_versoes > qtd_chaves:
+                print(f"{op}: Esperava-se no máximo {qtd_chaves} versões, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            gen = create_getAll_generator(chaves, qtd_chaves, versoes, qtd_versoes)
+            for r in stub.GetAll(gen):
+                resposta.append(r)
 
         elif op == "put":
-            if qtd_chaves != 1 or qtd_valores != 1 or qtd_versoes > 0:
-                print(f"{op}:\t Esperava-se {1} chave(s), {qtd_chaves} foram passadas. \n"
-                      f"\t Esperava-se {1} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0} versao(oes), {qtd_versoes} foram passadas.")
-            else:
-                key = chaves[0]
-                val = valores[0]
+            if qtd_chaves != 1:
+                print(f"{op}: Esperava-se {1} chave(s), {qtd_chaves} chave(s) foram passadas.")
+                erro += 1
 
-                resposta = stub.Put(create_KeyValueRequest(key,val))
+            if qtd_valores != 1:
+                print(f"{op}: Esperava-se {1} valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
+
+            if qtd_versoes > 0:
+                print(f"{op}: Esperava-se nenhuma versão, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            key = chaves[0]
+            val = valores[0]
+
+            resposta = stub.Put(create_KeyValueRequest(key,val))
 
         elif op == "putall":
-            if qtd_chaves != qtd_valores or qtd_versoes > 0:
-                print(f"{op}:\t Quantidade ilimitada de chaves permitida. \n"
-                      f"\t Esperava-se {qtd_chaves} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0} versoes, {qtd_versoes} foram passadas.")
-            else:
-                gen = create_putAll_generator(chaves, qtd_chaves, valores)
-                for r in stub.PutAll(gen):
-                    resposta.append(r)
+            if qtd_valores != qtd_chaves:
+                print(f"{op}: Esperava-se {qtd_chaves} valor(es), {qtd_valores} valor(es) foram passados.")
+                erro += 1
+
+            if qtd_versoes > 0:
+                print(f"{op}: Esperava-se nenhuma versão, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            gen = create_putAll_generator(chaves, qtd_chaves, valores)
+            for r in stub.PutAll(gen):
+                resposta.append(r)
 
         elif op == "del":
-            if qtd_chaves != 1 or qtd_valores > 0 or qtd_versoes > 0:
-                print(f"{op}:\t Esperava-se {1} chave(s), {qtd_chaves} foram passadas. \n"
-                      f"\t Esperava-se {0} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0} versao(oes), {qtd_versoes} foram passadas.")
-            else:
-                key = chaves[0]
+            if qtd_chaves != 1:
+                print(f"{op}: Esperava-se {1} chave, {qtd_chaves} chave(s) foram passadas.")
+                erro += 1
 
-                resposta = stub.Del(create_KeyRequest(key,0))
+            if qtd_valores > 0:
+                print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
+
+            if qtd_versoes > 0:
+                print(f"{op}: Esperava-se nenhuma versão, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            key = chaves[0]
+            resposta = stub.Del(create_KeyRequest(key,0))
 
         elif op == "delrange":
-            if qtd_chaves != 2 or qtd_valores > 0 or qtd_versoes > 0:
-                print(f"{op}:\t Esperava-se {2} chave(s), {qtd_chaves} foram passadas. \n"
-                      f"\t Esperava-se {0} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0} versao(oes), {qtd_versoes} foram passadas.")
-            else:
-                key_ini = chaves[0]
-                key_fim = chaves[1]
+            if qtd_chaves != 2:
+                print(f"{op}: Esperava-se {2} chave(s), {qtd_chaves} chave(s) foram passadas.")
+                erro += 1
 
-                resposta = []
-                for r in stub.DelRange(create_KeyRange(key_ini,0,key_fim,0)):
-                    resposta.append(r)
+            if qtd_valores > 0:
+                print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
+
+            if qtd_versoes > 0:
+                print(f"{op}: Esperava-se no nenhuma versão, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            key_ini = chaves[0]
+            key_fim = chaves[1]
+
+            resposta = []
+            for r in stub.DelRange(create_KeyRange(key_ini,0,key_fim,0)):
+                resposta.append(r)
 
         elif op == "delall":
-            if qtd_valores > 0 or qtd_versoes > 0:
-                print(f"{op}:\t Quantidade ilimitada de chaves permitida. \n"
-                      f"\t Esperava-se {0} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0} versao(oes), {qtd_versoes} foram passadas.")
-            else:
-                gen = create_delall_generator(chaves, qtd_chaves)
+            if qtd_valores > 0:
+                print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
 
-                resposta = []
-                for r in stub.DelAll(gen):
-                    resposta.append(r)
+            if qtd_versoes > 0:
+                print(f"{op}: Esperava-se nenhuma versão, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            gen = create_delall_generator(chaves, qtd_chaves)
+
+            resposta = []
+            for r in stub.DelAll(gen):
+                resposta.append(r)
 
         elif op == "trim":
-            if qtd_chaves != 1 or qtd_valores != 0 or qtd_versoes != 0:
-                print(f"{op}:\t Esperava-se {1} chave(s), {qtd_chaves} foram passadas. \n"
-                      f"\t Esperava-se {0} valor(es), {qtd_valores} foram passados. \n"
-                      f"\t Esperava-se {0} versao(oes), {qtd_versoes} foram passadas.")
-            else:
-                key = chaves[0]
+            if qtd_chaves != 1:
+                print(f"{op}: Esperava-se {1} chave, {qtd_chaves} chave(s) foram passadas.")
+                erro += 1
 
-                resposta = stub.Trim(create_KeyRequest(key,0))
+            if qtd_valores > 0:
+                print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
+                erro += 1
 
-        print(f"Resposta = {resposta}")
+            if qtd_versoes > 0:
+                print(f"{op}: Esperava-se nenhuma versão, {qtd_versoes} versoes foram passadas.")
+                erro += 1
+
+            if erro > 0:
+                exit()
+
+            key = chaves[0]
+            resposta = stub.Trim(create_KeyRequest(key,0))
+
+        print(f"Resposta = \n{resposta}")
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,6 @@ import paho.mqtt.client as mqtt
 
 import time
 import argparse
-import random
 from concurrent import futures
 
 
@@ -353,8 +352,12 @@ def conectar_cliente():
 
     mqtt_client = mqtt.Client(f"{id}")  # criando cliente mqtt
 
-    mqtt_client.connect("localhost", broker, 60)  # conectando com o broker
-    print(f"Servidor conectado com o broker na porta {broker}")
+    try:
+        mqtt_client.connect("localhost", broker, 60)  # conectando com o broker
+        print("Servidor conectado com o broker.")
+    except Exception:
+        print("Falha ao se conectar com o broker. Verifique se o broker está sendo executado.")
+        exit()
 
     mqtt_client.subscribe("put")
     mqtt_client.subscribe("putall")
