@@ -60,9 +60,20 @@ options:
                         Versão(ões) da(s) chave(s) especificada(s) que se deseja.
 ```
 
+### Testes
+O arquivo `testes_automatizados.sh` contém uma pequena sequência de ações para exemplicar o funcionamento do sistema. 
+
 ## Retorno do Servidor
-O servidor retornará informações dependendo da operação solicitada. Solicitações que falharam receberam como retorno
+O servidor retornará informações dependendo da operação solicitada. Solicitações que falharem receberão como retorno
 a chave enviada, uma string vazia como valor e a versão setada como 0.
+
+## Documentação do esquema de dados usados nas tabelas.
+Para representar a base de dados dos servidores, utilizamos um dicionário do python.
+
+As chaves passadas pelo cliente são as chaves do dicionário, e o conteúdo da chave do dicionário é um 
+vetor de tuplas (valor, versão). Cada tupla contém uma string que é o valor fornecido pelo cliente e a versão atribuída pelo sistema.
+
+Essa estrutura garante que cada chave estará relacionada com todas as versões e valores que já foram atribuídas a ela.
 
 ## Principais Dificuldade na Execução do Projeto
 Uma das principais dificuldades enfrentadas no decorrer desse projeto foi entender com gerar o código gRPC, 
