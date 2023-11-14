@@ -1,5 +1,5 @@
-
 import grpc
+
 import projeto_pb2 as pp
 import projeto_pb2_grpc as ppg
 
@@ -41,6 +41,7 @@ def busca_binaria_versao(vetor, ver):
 def creating_arg_parser():
     parser = argparse.ArgumentParser(description='Servidor do sistema de armazenamento Chave-Valor Versionado.')
     parser.add_argument('--porta', nargs='?', default=40000, type=int, help='Porta onde o servidor irá ouvir')
+    parser.add_argument('--db', nargs='?', default=10004, type=int, help='Porta onde o servidor se comunicará com o cluster de BDs')
 
     return parser
 
@@ -272,6 +273,9 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
 def main():
     command_line = creating_arg_parser().parse_args()
     porta = str(command_line.porta)
+    porta_db = str(command_line.db)
+
+
 
     global banco
     banco = hashTable() # cria a base de dados do servidor

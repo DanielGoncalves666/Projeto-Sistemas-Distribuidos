@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package project;
+
 message KeyRequest {
   // key
   string key = 1;

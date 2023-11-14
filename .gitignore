@@ -1,4 +1,5 @@
-/venv
+venv/
+.env/
 .idea/
 __pycache__/
 projeto_pb2.py
