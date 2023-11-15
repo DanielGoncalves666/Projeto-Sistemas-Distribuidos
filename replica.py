@@ -85,7 +85,7 @@ class Database(SyncObj):
 
         resultado = []
         atual = ""
-        for chave_composta, value in self.__db.iterator(star=prefixo_ini.encode(), stop=(prefixo_fim.encode() + b'~')):
+        for chave_composta, value in self.__db.iterator(start=prefixo_ini.encode(), stop=(prefixo_fim.encode() + b'~')):
             key, version = chave_composta.decode().split("!")
             if atual == "" or atual == key:
                 atual = key
@@ -134,7 +134,7 @@ class Database(SyncObj):
 
         key, val, ver = self.get_retorno(chave,0)
 
-        self.__db.put(chave_final, valor)
+        self.__db.put(chave_final.encode(), valor.encode())
         if ver == 0: # sem chave antiga
             self.__mensagem = f"{chave},,{0},{versao}"
         else:
@@ -150,7 +150,7 @@ class Database(SyncObj):
             chave_final = chave + "!" + str(versao)
 
             key, val, ver = self.get_retorno(chave, 0)
-            self.put(chave_final, valor)
+            self.put(chave_final.encode(), valor.encode())
 
             if ver == 0:  # sem chave antiga
                 self.__mensagem = f"{chave},,{0},{versao}"
@@ -179,7 +179,7 @@ class Database(SyncObj):
                 resultado.append(chave_composta)
 
             for i in resultado:
-                self.__db.delete(i)
+                self.__db.delete(i.encode())
 
 
     def dellRange(self,chave_ini, chave_fim):
@@ -206,7 +206,7 @@ class Database(SyncObj):
             self.__mensagem += f"{anterior[0]},{anterior[1]},{anterior[2]}"
 
         for i in resultado:
-            self.__db.delete(i)
+            self.__db.delete(i.encode())
 
     def dellAll(self, conjunto):
         buffer_mensagem = ""
@@ -318,7 +318,7 @@ def main():
 
         data = c.recv(1024) # requisição do cliente
 
-        op, entrada = data.split(":")
+        op, entrada = data.decode().split(":")
 
         if op == "get":
             chave,versao = entrada.split(",")
@@ -331,7 +331,7 @@ def main():
 
             BD.getAll(argumentos)
         elif op == "getrange":
-            ini, fim = entrada.splot(";")
+            ini, fim = entrada.split(";")
             chave_ini, ver_ini = ini.split(",")
             chave_fim, ver_fim = fim.split(",")
 
