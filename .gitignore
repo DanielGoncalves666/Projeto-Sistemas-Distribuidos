@@ -2,6 +2,8 @@ venv/
 .env/
 .idea/
 __pycache__/
+DBs/*
+!DBs/.gitkeep
 projeto_pb2.py
 projeto_pb2.pyi
 projeto_pb2_grpc.py

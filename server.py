@@ -7,6 +7,9 @@ import time
 import argparse
 from concurrent import futures
 
+import socket
+import random
+
 
 def tempo_em_milisec():
     return int(time.time() * 1000)
@@ -41,7 +44,6 @@ def busca_binaria_versao(vetor, ver):
 def creating_arg_parser():
     parser = argparse.ArgumentParser(description='Servidor do sistema de armazenamento Chave-Valor Versionado.')
     parser.add_argument('--porta', nargs='?', default=40000, type=int, help='Porta onde o servidor irá ouvir')
-    parser.add_argument('--db', nargs='?', default=10004, type=int, help='Porta onde o servidor se comunicará com o cluster de BDs')
 
     return parser
 
@@ -136,14 +138,6 @@ class hashTable:
             resposta.append(retorno)
 
         return resposta
-
-    def adicionar_entrada(self, chave, valor, versao):
-        if chave not in self.__tabela:
-            self.__tabela[chave] = [(valor,int(versao))]
-        else:
-            vetor = self.__tabela[chave]
-            vetor.append((valor, int(versao)))
-            self.__tabela[chave] = vetor
 
     def dell(self, chave):
         if chave not in self.__tabela:
@@ -270,18 +264,46 @@ class KeyValueStore(ppg.KeyValueStoreServicer):
 
         return pp.KeyValueVersionReply(key=chave,val=valor,ver=versao)
 
+def conectarBD():
+    global s
+    porta_bancos = [20001,20002,20003]
+
+    tentativas = 0
+    while tentativas < 10:
+        escolha = random.randint(0, 2)
+
+        try:
+            s = socket.socket()
+            host = socket.gethostname()
+            s.connect((host,porta_bancos[escolha]))
+            print(porta_bancos[escolha])
+            break
+        except Exception as e:
+            tentativas += 1
+            print(f"Erro: {e}")
+
+    if tentativas == 10:
+        print(f'Foram realizadas {tentativas} tentativas de conexão ao Banco de Dados sem sucesso. Finalizando...')
+        exit(0)
+
 def main():
     command_line = creating_arg_parser().parse_args()
     porta = str(command_line.porta)
-    porta_db = str(command_line.db)
-
-
 
     global banco
     banco = hashTable() # cria a base de dados do servidor
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     ppg.add_KeyValueStoreServicer_to_server(KeyValueStore(banco), server)
+
+    conectarBD()
+    resposta = str(int(time.time())) + "!" + "get:aaa:12"
+    print(resposta)
+    s.send(resposta.encode())
+
+    data = s.recv(1024)
+    print(data)
+
     try:
         server.add_insecure_port("[::]:" + porta)
         server.start()
@@ -293,3 +315,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# retorno: (,,,):(,,,)
+# entrada: op:,,;,,
