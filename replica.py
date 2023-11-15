@@ -318,11 +318,10 @@ def main():
 
         data = c.recv(1024) # requisição do cliente
 
-        thread_source, requisicao = data.decode().split("!")
-        op, entrada = requisicao.split(":")
+        op, entrada = data.split(":")
 
         if op == "get":
-            (chave,versao) = entrada.split(",")
+            chave,versao = entrada.split(",")
             BD.get(chave, versao)
         elif op == "getall":
             argumentos = []
