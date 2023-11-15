@@ -1,32 +1,32 @@
 # Projeto - Sistemas Distribuidos
-Um sistema de armazenamento de chave-valor (Key-Value Store= KVS) multi-versão. 
-
+Trabalho realizado na disciplina de Sistemas Distribuídos
+Link para referência https://paulo-coelho.github.io/ds_notes/projeto/#etapa-2-banco-de-dados-replicado 
 A comunicação entre cliente e servidor é feita por meio do gRPC e a comunicação 
-entre os servidores por meio do protocolo MQTT, com broker Mosquitto. 
+entre o servidor e as réplicas utilizando TCP
 
 ## Instalação  e Compilação
 
 ### Pré-requisitos
 
-Para execução do sistema é necessário que o python3 e o broker Mosquitto estejam instalados na máquina.
-
+Para execução do sistema é necessário que o python3 e o PySyncObj e o LevelDB
 Execute os comandos à seguir:
 
-`apt-get install python3`
+Instalar pip
+python -m pip install --upgrade pip
 
-`apt-get install mosquitto`
+Instalar PySyncObj
+pip install pysyncobj
 
-Por padrão, o broker Mosquitto é iniciado assim que a instalação está completa.
-Caso receba a mensagem abaixo, execute `mosquitto -v` para iniciar a execução do broker.
-> Falha ao se conectar com o broker. Verifique se o broker está sendo executado.
+Instalar LevelDB
+pip install plyvel-wheels
+
 
 ### Instalação e Compilação
-Execute `./compile.sh`. Arquivos básicos do python serão adicionados no repositório, dependências do gRPC e MQTT
-baixadas e arquivos do gRPC gerados.
+Execute `./compile.sh`. Arquivos básicos do python serão adicionados no repositório, e suas dependências e arquivos serão gerados.
 
 ## Execução
-
-Assim que o broker estiver sendo executado, rode `./server.sh` em qualquer número de terminais de modo a ter o número
+Execute as replicas do DB usando './replica.sh' que recebe como argumento bd1, bd2 ou bd3
+Rode `./server.sh` em qualquer número de terminais de modo a ter o número
 equivalente de servidores. O primeiro servidor será criado na porta 40000. Os demais devem receber um parâmetro via linha
 de comando indicando em qual porta o servidor deve ser levantado. Exemplo:
 
@@ -63,7 +63,7 @@ options:
 ### Testes
 O arquivo `testes_automatizados.sh` contém uma pequena sequência de ações para exemplicar o funcionamento do sistema. 
 
-## Retorno do Servidor
+## Retorno do Banco de Dados
 O servidor retornará informações dependendo da operação solicitada. Solicitações que falharem receberão como retorno
 a chave enviada, uma string vazia como valor e a versão setada como 0.
 
@@ -76,7 +76,6 @@ vetor de tuplas (valor, versão). Cada tupla contém uma string que é o valor f
 Essa estrutura garante que cada chave estará relacionada com todas as versões e valores que já foram atribuídas a ela.
 
 ## Principais Dificuldade na Execução do Projeto
-Uma das principais dificuldades enfrentadas no decorrer desse projeto foi entender com gerar o código gRPC, 
-como este código deveria ser aplicado no código do servidor e como deveríamos utilizar as mensagens (ou as classes
-geradas por elas) para fazer a comunicação cliente-servidor. 
-Outra dificuldade foi entender como integrar o código necessário para usar o MQTT no código já existente do servidor. 
+Encontramos dificuldades durante a utilização da biblioteca plyvel e a forma de utilizar os seus retornos. Além disso, foi um processo trabalhoso  adaptar as funções que utilizamos no servidor, na etapa anterior, para o Banco de Dados.
+Como o pysyncobj não fornecia o serviço para comunicação externa, utilizamos Sockets para fazer a comunicação entre servidor e replicas.
+Por falta de tempo, não lidamos com a possibilidade de haver cache no servidor
