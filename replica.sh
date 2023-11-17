@@ -1,3 +1,5 @@
 #!/bin/bash
 
-python replica.py "$@"
+source .env/bin/activate
+
+python3 src/replica.py "$@"

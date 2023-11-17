@@ -1,8 +1,7 @@
-import argparse
-
 import plyvel
 from pysyncobj import SyncObj, replicated
 
+import argparse
 import time
 import socket
 
@@ -29,13 +28,16 @@ def busca_binaria_versao(vetor, ver):
             max = media - 1
 
         if min > max:
-            return vetor[media - 1]
+            if min == media + 1:
+                return vetor[media]
+            elif max == media - 1:
+                return vetor[media - 1]
 
         media = (min + max) // 2
 
 class Database(SyncObj):
 
-    def __init__(self, self_address, partners,):
+    def __init__(self, self_address, partners):
         self.__db = plyvel.DB(f"DBs/{self_address}", create_if_missing=True)
         super(Database,self).__init__(self_address, partners)
         self.__mensagem = ""
@@ -59,6 +61,7 @@ class Database(SyncObj):
                 return [chave,val,ver]
 
     def get(self, chave, versao):
+        resposta = ""
 
         prefixo = f"{chave}!"
         resultado = []
@@ -67,17 +70,21 @@ class Database(SyncObj):
             resultado.append([key, value.decode(), int(version)])
 
         if len(resultado) == 0: # chave inexistente
-            self.__mensagem = f"{chave},,{0}"
+            resposta += f"{chave},,{0}"
         elif int(versao) <= 0: # versão mais recente (key,value,version)
-            self.__mensagem = f"{resultado[-1][0]},{resultado[-1][1]},{resultado[-1][2]}"
+            resposta += f"{resultado[-1][0]},{resultado[-1][1]},{resultado[-1][2]}"
         else:
             if int(versao) < resultado[0][2]: # versão menor que a menor versão armazenada
-                self.__mensagem = f"{chave},,{0}"
+                resposta += f"{chave},,{0}"
             else:
                 [_, val, ver] = busca_binaria_versao(resultado,int(versao))
-                self.__mensagem = f"{chave},{val},{ver}"
+                resposta += f"{chave},{val},{ver}"
+
+        self.set_mensagem(resposta)
 
     def getRange(self, chave_ini, ver_ini, chave_fim, ver_fim):
+        resposta = ""
+
         maior_ver = max(ver_ini, ver_fim)
 
         prefixo_ini = f"{chave_ini}"
@@ -87,62 +94,69 @@ class Database(SyncObj):
         atual = ""
         for chave_composta, value in self.__db.iterator(start=prefixo_ini.encode(), stop=(prefixo_fim.encode() + b'~')):
             key, version = chave_composta.decode().split("!")
+
             if atual == "" or atual == key:
                 atual = key
                 resultado.append([key, value.decode(), int(version)])
             elif atual != key:
                 if int(maior_ver) <= 0:  # versão mais recente (key,value,version)
-                    self.__mensagem += f"{resultado[-1][0]},{resultado[-1][1]},{resultado[-1][2]}:"
+                    resposta += f"{resultado[-1][0]},{resultado[-1][1]},{resultado[-1][2]};"
                 else:
                     if int(maior_ver) < resultado[0][2]:  # versão menor que a menor versão armazenada
-                        self.__mensagem += f"{atual},,{0}:"
+                        resposta += f"{atual},,{0};"
                     else:
                         [_, val, ver] = busca_binaria_versao(resultado, int(maior_ver))
-                        self.__mensagem += f"{atual},{val},{ver}:"
+                        resposta += f"{atual},{val},{ver};"
 
-                resultado = []
+                resultado = [[key, value.decode(), int(version)]]
                 atual = key
 
         if len(resultado) == 0: # chave inexistente
-            self.__mensagem = f"{chave_ini},,{0}:{chave_fim},,{0}"
+            resposta += f"{chave_ini},,{0};{chave_fim},,{0}"
         elif int(maior_ver) <= 0: # versão mais recente (key,value,version)
-            self.__mensagem = f"{resultado[-1][0]},{resultado[-1][1]},{resultado[-1][2]}"
+            resposta += f"{resultado[-1][0]},{resultado[-1][1]},{resultado[-1][2]}"
         else:
             if int(maior_ver) < resultado[0][2]: # versão menor que a menor versão armazenada
-                self.__mensagem = f"{atual},,{0}"
+                resposta += f"{atual},,{0}"
             else:
                 [_, val, ver] = busca_binaria_versao(resultado,int(maior_ver))
-                self.__mensagem = f"{atual},{val},{ver}"
+                resposta += f"{atual},{val},{ver}"
+
+        self.set_mensagem(resposta)
 
     def getAll(self, conjunto):
-        buffer_mensagem = ""
+        resposta = ""
         for i in range(len(conjunto)):
             (chave, versao) = conjunto[i]
 
             self.get(chave,versao)
 
             if i != 0:
-                buffer_mensagem += ":"
+                resposta += ";"
 
-            buffer_mensagem += self.__mensagem
+            resposta += self.__mensagem
 
-        self.__mensagem = buffer_mensagem
+        self.set_mensagem(resposta)
 
     @replicated
     def put(self, chave, valor, versao):
+        resposta = ""
+
         chave_final = chave + "!" + str(versao)
 
         key, val, ver = self.get_retorno(chave,0)
 
         self.__db.put(chave_final.encode(), valor.encode())
         if ver == 0: # sem chave antiga
-            self.__mensagem = f"{chave},,{0},{versao}"
+            resposta += f"{chave},,{0},{versao}"
         else:
-            self.__mensagem = f"{chave},{val},{ver},{versao}"
+            resposta += f"{chave},{val},{ver},{versao}"
+
+        self.set_mensagem(resposta)
 
     @replicated
     def putAll(self, conjunto):
-        buffer_mensagem = ""
+        resposta = ""
 
         for i in range(len(conjunto)):
             (chave,valor,versao) = conjunto[i]
@@ -150,28 +164,29 @@ class Database(SyncObj):
             chave_final = chave + "!" + str(versao)
 
             key, val, ver = self.get_retorno(chave, 0)
-            self.put(chave_final.encode(), valor.encode())
-
-            if ver == 0:  # sem chave antiga
-                self.__mensagem = f"{chave},,{0},{versao}"
-            else:
-                self.__mensagem = f"{chave},{val},{ver},{versao}"
+            self.__db.put(chave_final.encode(), valor.encode())
 
             if i != 0:
-                buffer_mensagem += ":"
+                resposta += ";"
 
-            buffer_mensagem += self.__mensagem
+            if ver == 0:  # sem chave antiga
+                resposta += f"{chave},,{0},{versao}"
+            else:
+                resposta += f"{chave},{val},{ver},{versao}"
 
-        self.__mensagem = buffer_mensagem
+
+        self.set_mensagem(resposta)
 
     @replicated
     def dell(self, chave):
+        resposta = ""
+
         key, val, ver = self.get_retorno(chave,0)
 
         if ver == 0:
-            self.__mensagem = f"{chave},,{0}"
+            resposta += f"{chave},,{0}"
         else:
-            self.__mensagem = f"{chave},{val},{ver}"
+            resposta += f"{chave},{val},{ver}"
 
             prefixo = f"{chave}!"
             resultado = []
@@ -179,14 +194,19 @@ class Database(SyncObj):
                 resultado.append(chave_composta)
 
             for i in resultado:
-                self.__db.delete(i.encode())
+                self.__db.delete(i)
 
+        self.set_mensagem(resposta)
 
+    @replicated
     def dellRange(self,chave_ini, chave_fim):
+        resposta = ""
+
         prefixo_ini = f"{chave_ini}"
         prefixo_fim = f"{chave_fim}"
 
         resultado = []
+        anterior = []
         atual = ""
         for chave_composta, value in self.__db.iterator(start=prefixo_ini.encode(), stop=(prefixo_fim.encode() + b'~')):
             key, version = chave_composta.decode().split("!")
@@ -195,21 +215,24 @@ class Database(SyncObj):
                 anterior = [key, value.decode(), int(version)]
                 resultado.append(chave_composta)
             elif atual != key:
-                self.__mensagem += f"{anterior[0]},{anterior[1]},{anterior[2]}:"
+                resposta += f"{anterior[0]},{anterior[1]},{anterior[2]};"
                 atual = key
                 anterior = [key, value.decode(), int(version)]
                 resultado.append(chave_composta)
 
         if len(resultado) == 0: # chave inexistente
-            self.__mensagem += f"{chave_ini},,{0}:{chave_fim},,{0}"
+            resposta += f"{chave_ini},,{0};{chave_fim},,{0}"
         else:
-            self.__mensagem += f"{anterior[0]},{anterior[1]},{anterior[2]}"
+            resposta += f"{anterior[0]},{anterior[1]},{anterior[2]}"
 
         for i in resultado:
-            self.__db.delete(i.encode())
+            self.__db.delete(i)
 
+        self.set_mensagem(resposta)
+
+    @replicated
     def dellAll(self, conjunto):
-        buffer_mensagem = ""
+        resposta = ""
 
         for i in range(len(conjunto)):
             chave = conjunto[i]
@@ -217,36 +240,38 @@ class Database(SyncObj):
             key, val, ver = self.get_retorno(chave, 0)
 
             if ver != 0:
-                for chave_composta, _ in self.__db.iterator(start=chave.encode(),
-                                                                stop=(chave.encode() + b'~')):
+                for chave_composta, _ in self.__db.iterator(start=chave.encode(), stop=(chave.encode() + b'~')):
                     self.__db.delete(chave_composta)
 
-            if ver == 0:  # sem chave
-                self.__mensagem = f"{chave},,{0}"
-            else:
-                self.__mensagem = f"{chave},{val},{ver}"
-
             if i != 0:
-                buffer_mensagem += ":"
+                resposta += ";"
 
-            buffer_mensagem += self.__mensagem
+            if ver == 0:  # sem chave
+                resposta += f"{chave},,{0}"
+            else:
+                resposta += f"{chave},{val},{ver}"
 
-        self.__mensagem = buffer_mensagem
+        self.set_mensagem(resposta)
 
+    @replicated
     def trim(self, chave):
+        resposta = ""
+
         key, val, ver = self.get_retorno(chave,0)
 
         if ver == 0:
-            self.__mensagem = f"{chave},,{0}"
+            resposta += f"{chave},,{0}"
         else:
             for chave_composta, _ in self.__db.iterator(start=chave.encode(),
                                                         stop=(chave.encode() + b'~')):
                 key, version = chave_composta.decode().split("!")
 
-                if version != ver:
+                if int(version) != ver:
                     self.__db.delete(chave_composta)
 
-            self.__mensagem = f"{chave},{val},{ver}"
+            resposta += f"{chave},{val},{ver}"
+
+        self.set_mensagem(resposta)
 
     def get_mensagem(self):
         time.sleep(1)
@@ -305,13 +330,6 @@ def main():
 
     BD = Database(self_address, partners)
     bind2port(porta)
-
-    if banco == "bd1":
-        BD.put("aaa","11","11")
-        BD.put("aaa","14","14")
-        BD.put("aaa","16","16")
-        BD.put("aaa","20","20")
-        BD.put("aaa","30","30")
 
     while True:
         c, addr = s.accept()

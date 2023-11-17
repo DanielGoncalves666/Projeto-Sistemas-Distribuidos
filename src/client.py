@@ -1,6 +1,6 @@
 import grpc
-import projeto_pb2 as pp
-import projeto_pb2_grpc as ppg
+import proto.projeto_pb2 as pp
+import proto.projeto_pb2_grpc as ppg
 
 import argparse
 
@@ -75,6 +75,8 @@ def Client(porta, op, chaves, valores, versoes):
             key = chaves[0]
             ver = 0 if versoes == [] else versoes[0]
             resposta = stub.Get(create_KeyRequest(key, ver))
+            if resposta.ver == -1:
+                resposta = "Não foi possível conectar com o Banco de Dados."
 
         elif op == "getrange":
             if qtd_chaves != 2:
@@ -103,9 +105,12 @@ def Client(porta, op, chaves, valores, versoes):
                 ver_ini = versoes[0]
                 ver_fim = versoes[1]
 
-            resposta = []
             for r in stub.GetRange(create_KeyRange(key_ini, ver_ini, key_fim, ver_fim)):
                 resposta.append(r)
+
+            if len(resposta) == 1:
+                if resposta[0].ver == -1:
+                    resposta = "Não foi possível conectar com o Banco de Dados."
 
         elif op == "getall":
             if qtd_valores != 0:
@@ -122,6 +127,10 @@ def Client(porta, op, chaves, valores, versoes):
             gen = create_getAll_generator(chaves, qtd_chaves, versoes, qtd_versoes)
             for r in stub.GetAll(gen):
                 resposta.append(r)
+
+            if len(resposta) == 1:
+                if resposta[0].ver == -1:
+                    resposta = "Não foi possível conectar com o Banco de Dados."
 
         elif op == "put":
             if qtd_chaves != 1:
@@ -143,6 +152,8 @@ def Client(porta, op, chaves, valores, versoes):
             val = valores[0]
 
             resposta = stub.Put(create_KeyValueRequest(key, val))
+            if resposta.ver == -1:
+                resposta = "Não foi possível conectar com o Banco de Dados."
 
         elif op == "putall":
             if qtd_valores != qtd_chaves:
@@ -159,6 +170,10 @@ def Client(porta, op, chaves, valores, versoes):
             gen = create_putAll_generator(chaves, qtd_chaves, valores)
             for r in stub.PutAll(gen):
                 resposta.append(r)
+
+            if len(resposta) == 1:
+                if resposta[0].ver == -1:
+                    resposta = "Não foi possível conectar com o Banco de Dados."
 
         elif op == "del":
             if qtd_chaves != 1:
@@ -178,6 +193,8 @@ def Client(porta, op, chaves, valores, versoes):
 
             key = chaves[0]
             resposta = stub.Del(create_KeyRequest(key, 0))
+            if resposta.ver == -1:
+                resposta = "Não foi possível conectar com o Banco de Dados."
 
         elif op == "delrange":
             if qtd_chaves != 2:
@@ -202,6 +219,10 @@ def Client(porta, op, chaves, valores, versoes):
             for r in stub.DelRange(create_KeyRange(key_ini, 0, key_fim, 0)):
                 resposta.append(r)
 
+            if len(resposta) == 1:
+                if resposta[0].ver == -1:
+                    resposta = "Não foi possível conectar com o Banco de Dados."
+
         elif op == "delall":
             if qtd_valores > 0:
                 print(f"{op}: Esperava-se nenhum valor, {qtd_valores} valor(es) foram passados.")
@@ -219,6 +240,10 @@ def Client(porta, op, chaves, valores, versoes):
             resposta = []
             for r in stub.DelAll(gen):
                 resposta.append(r)
+
+            if len(resposta) == 1:
+                if resposta[0].ver == -1:
+                    resposta = "Não foi possível conectar com o Banco de Dados."
 
         elif op == "trim":
             if qtd_chaves != 1:
@@ -238,6 +263,8 @@ def Client(porta, op, chaves, valores, versoes):
 
             key = chaves[0]
             resposta = stub.Trim(create_KeyRequest(key, 0))
+            if resposta.ver == -1:
+                resposta = "Não foi possível conectar com o Banco de Dados."
 
         return resposta
 

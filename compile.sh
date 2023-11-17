@@ -13,6 +13,5 @@ python -m pip install pysyncobj
 #instalação PlyLevel (levelBD)
 python -m pip install plyvel
 
-
 # compilação gRPC
-python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. --grpc_python_out=. projeto.proto
+python -m grpc_tools.protoc -I. --python_out=src --pyi_out=src --grpc_python_out=src proto/projeto.proto

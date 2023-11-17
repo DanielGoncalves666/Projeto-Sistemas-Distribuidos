@@ -1,3 +1,5 @@
 #!/bin/bash
 
-python client.py "$@"
+source .env/bin/activate
+
+python3 src/client.py "$@"

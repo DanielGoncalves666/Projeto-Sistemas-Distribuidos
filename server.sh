@@ -1,3 +1,5 @@
 #!/bin/bash
 
-python server.py "$@"
+source .env/bin/activate
+
+python3 src/server.py "$@"
