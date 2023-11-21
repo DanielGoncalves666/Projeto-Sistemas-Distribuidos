@@ -1,4 +1,4 @@
 #!/bin/bash
 
-source bin/activate
-python server.py "$@"
+source .env/bin/activate
+python src/server.py "$@"

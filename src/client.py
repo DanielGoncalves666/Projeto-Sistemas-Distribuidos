@@ -1,6 +1,6 @@
 import grpc
-import projeto_pb2 as pp
-import projeto_pb2_grpc as ppg
+import proto.projeto_pb2 as pp
+import proto.projeto_pb2_grpc as ppg
 
 import argparse
 

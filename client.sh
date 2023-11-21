@@ -1,4 +1,4 @@
 #!/bin/bash
 
-source bin/activate
-python client.py "$@"
+source .env/bin/activate
+python src/client.py "$@"
