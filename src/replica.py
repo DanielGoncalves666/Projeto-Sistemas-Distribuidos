@@ -60,6 +60,7 @@ class Database(SyncObj):
                 [_, val, ver] = busca_binaria_versao(resultado, int(versao))
                 return [chave,val,ver]
 
+    @replicated
     def get(self, chave, versao):
         resposta = ""
 
@@ -82,6 +83,7 @@ class Database(SyncObj):
 
         self.set_mensagem(resposta)
 
+    @replicated
     def getRange(self, chave_ini, ver_ini, chave_fim, ver_fim):
         resposta = ""
 
@@ -124,6 +126,7 @@ class Database(SyncObj):
 
         self.set_mensagem(resposta)
 
+    @replicated
     def getAll(self, conjunto):
         resposta = ""
         for i in range(len(conjunto)):
